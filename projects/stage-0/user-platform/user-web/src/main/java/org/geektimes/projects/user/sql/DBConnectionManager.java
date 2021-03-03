@@ -2,6 +2,7 @@ package org.geektimes.projects.user.sql;
 
 import org.geektimes.projects.user.domain.User;
 
+import javax.sql.DataSource;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -14,14 +15,45 @@ import java.util.Properties;
 
 public class DBConnectionManager {
 
+    public static DBConnectionManager instance = new DBConnectionManager();
+
     private Connection connection;
+
+    private DataSource dataSource;
 
     public void setConnection(Connection connection) {
         this.connection = connection;
     }
 
     public Connection getConnection() {
-        return this.connection;
+        if (dataSource != null) {
+            Connection connectionFromPool = null;
+            try {
+                connectionFromPool = dataSource.getConnection();
+                System.out.println("get connection from dataSource: " + connectionFromPool);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+            return connectionFromPool;
+        } else {
+            if (connection == null) {
+                try {
+                    Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                String databaseURL = "jdbc:derby:/db/user-platform;create=true";
+                try {
+                    connection = DriverManager.getConnection(databaseURL);
+                    System.out.println("get connection from DriverManager: " + connection);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return this.connection;
+        }
+
+
     }
 
     public void releaseConnection() {
@@ -32,6 +64,14 @@ public class DBConnectionManager {
                 throw new RuntimeException(e.getCause());
             }
         }
+    }
+
+    public DataSource getDataSource() {
+        return dataSource;
+    }
+
+    public void setDataSource(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public static final String DROP_USERS_TABLE_DDL_SQL = "DROP TABLE users";
