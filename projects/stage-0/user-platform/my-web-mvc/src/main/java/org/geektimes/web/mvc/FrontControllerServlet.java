@@ -4,14 +4,19 @@ import org.apache.commons.lang.StringUtils;
 import org.geektimes.web.mvc.controller.Controller;
 import org.geektimes.web.mvc.controller.PageController;
 import org.geektimes.web.mvc.controller.RestController;
+import org.geektimes.web.mvc.header.CacheControlHeaderWriter;
+import org.geektimes.web.mvc.header.annotation.CacheControl;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.Path;
 import java.io.IOException;
@@ -145,9 +150,6 @@ public class FrontControllerServlet extends HttpServlet {
                         return;
                     } else if (controller instanceof RestController) {
                         // TODO
-                        RestController restController = RestController.class.cast(controller);
-                        Object viewPath = restController.execute(request, response);
-                        response.getWriter().write(viewPath.toString());
                     }
 
                 }
