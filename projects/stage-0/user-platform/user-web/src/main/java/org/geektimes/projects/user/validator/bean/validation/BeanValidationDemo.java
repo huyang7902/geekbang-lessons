@@ -1,6 +1,7 @@
 package org.geektimes.projects.user.validator.bean.validation;
 
 import org.geektimes.projects.user.domain.User;
+import org.geektimes.projects.user.validator.bean.validation.group.UserGroup;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
@@ -16,10 +17,10 @@ public class BeanValidationDemo {
         Validator validator = factory.getValidator();
 
         User user = new User();
-        user.setPassword("***");
+        user.setPassword("443");
 
         // 校验结果
-        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        Set<ConstraintViolation<User>> violations = validator.validate(user, UserGroup.Register.class);
 
         violations.forEach(c -> {
             System.out.println(c.getMessage());

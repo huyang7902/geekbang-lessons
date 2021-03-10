@@ -3,6 +3,8 @@ package org.geektimes.projects.user.service;
 import org.geektimes.projects.user.domain.User;
 import org.geektimes.projects.user.sql.LocalTransactional;
 
+import java.util.List;
+
 /**
  * 用户服务
  */
@@ -15,7 +17,7 @@ public interface UserService {
      * @return 成功返回<code>true</code>
      */
     @LocalTransactional
-    boolean register(User user);
+    List<String> register(User user);
 
     /**
      * 注销用户
@@ -36,4 +38,6 @@ public interface UserService {
     User queryUserById(Long id);
 
     User queryUserByNameAndPassword(String name, String password);
+
+    List<User> listAll();
 }

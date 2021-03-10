@@ -1,22 +1,19 @@
 package org.geektimes.web.mvc;
 
+import com.alibaba.fastjson.JSON;
 import org.apache.commons.lang.StringUtils;
+import org.geektimes.context.ComponentContext;
 import org.geektimes.web.mvc.controller.Controller;
 import org.geektimes.web.mvc.controller.PageController;
 import org.geektimes.web.mvc.controller.RestController;
-import org.geektimes.web.mvc.header.CacheControlHeaderWriter;
-import org.geektimes.web.mvc.header.annotation.CacheControl;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.Path;
 import java.io.IOException;
@@ -44,6 +41,7 @@ public class FrontControllerServlet extends HttpServlet {
      *
      * @param servletConfig
      */
+    @Override
     public void init(ServletConfig servletConfig) {
         initHandleMethods();
     }
@@ -53,6 +51,9 @@ public class FrontControllerServlet extends HttpServlet {
      * 利用 ServiceLoader 技术（Java SPI）
      */
     private void initHandleMethods() {
+
+        ComponentContext context = ComponentContext.getInstance();
+
         for (Controller controller : ServiceLoader.load(Controller.class)) {
             Class<?> controllerClass = controller.getClass();
             Path pathFromClass = controllerClass.getAnnotation(Path.class);
@@ -67,8 +68,8 @@ public class FrontControllerServlet extends HttpServlet {
                 }
                 handleMethodInfoMapping.put(requestPath,
                         new HandlerMethodInfo(requestPath, method, supportedHttpMethods));
-            }
-            controllersMapping.put(requestPath, controller);
+            };
+            controllersMapping.put(requestPath, context.getComponent(controller.getClass()));
         }
     }
 
@@ -116,6 +117,7 @@ public class FrontControllerServlet extends HttpServlet {
         String requestMappingPath = substringAfter(requestURI,
                 StringUtils.replace(prefixPath, "//", "/"));
         // 映射到 Controller
+        ComponentContext componentContext = (ComponentContext) request.getServletContext().getAttribute("ComponentContext");
         Controller controller = controllersMapping.get(requestMappingPath);
 
         if (controller != null) {
@@ -150,6 +152,11 @@ public class FrontControllerServlet extends HttpServlet {
                         return;
                     } else if (controller instanceof RestController) {
                         // TODO
+                        RestController restController = RestController.class.cast(controller);
+                        Object returnValue = restController.execute(request, response);
+                        response.setContentType("application/json; enconding=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        response.getWriter().write(JSON.toJSONString(returnValue));
                     }
 
                 }
@@ -157,7 +164,7 @@ public class FrontControllerServlet extends HttpServlet {
                 if (throwable.getCause() instanceof IOException) {
                     throw (IOException) throwable.getCause();
                 } else {
-                    throw new ServletException(throwable.getCause());
+                    throw new ServletException(throwable);
                 }
             }
         }

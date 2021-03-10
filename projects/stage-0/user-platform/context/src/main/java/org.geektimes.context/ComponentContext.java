@@ -1,7 +1,7 @@
 package org.geektimes.context;
 
-import org.geektimes.function.ThrowableAction;
-import org.geektimes.function.ThrowableFunction;
+import org.geektimes.context.function.ThrowableAction;
+import org.geektimes.context.function.ThrowableFunction;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -10,6 +10,7 @@ import javax.naming.*;
 import javax.servlet.ServletContext;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -40,6 +41,10 @@ public class ComponentContext {
     private ClassLoader classLoader;
 
     private Map<String, Object> componentsMap = new LinkedHashMap<>();
+
+    private final Map<Class<?>, String[]> allComponentNamesByType = new ConcurrentHashMap<>(64);
+
+    private Thread shutdownHook;
 
     /**
      * 获取 ComponentContext
@@ -73,7 +78,26 @@ public class ComponentContext {
         // 遍历获取所有的组件名称
         List<String> componentNames = listAllComponentNames();
         // 通过依赖查找，实例化对象（ Tomcat BeanFactory setter 方法的执行，仅支持简单类型）
-        componentNames.forEach(name -> componentsMap.put(name, lookupComponent(name)));
+        componentNames.forEach(name -> {
+            Object component = lookupComponent(name);
+            componentsMap.put(name, component);
+            Class<?> componentClass = component.getClass();
+            String[] compenemtNames = this.allComponentNamesByType.get(componentClass);
+            if (compenemtNames ==null || compenemtNames.length == 0) {
+                allComponentNamesByType.put(componentClass, new String[]{name});
+            } else {
+                List<String> componentList = Arrays.asList(compenemtNames);
+                componentList.add(name);
+                allComponentNamesByType.put(componentClass, (String[]) componentList.toArray());
+            }
+
+        });
+        logger.info("allComponentNamesByType: ");
+        allComponentNamesByType.forEach((clazz, compenentNames) -> {
+            logger.info("clazz: " + clazz + ", compenentNames: " + Arrays.asList(compenentNames));
+            logger.info("\r\n");
+
+        });
     }
 
     /**
@@ -91,9 +115,10 @@ public class ComponentContext {
             injectComponents(component, componentClass);
             // 初始阶段 - {@link PostConstruct}
             processPostConstruct(component, componentClass);
-            // TODO 实现销毁阶段 - {@link PreDestroy}
-            processPreDestroy();
+
         });
+        // TODO 实现销毁阶段 - {@link PreDestroy}
+        processPreDestroy(componentsMap);
     }
 
     private void injectComponents(Object component, Class<?> componentClass) {
@@ -131,8 +156,27 @@ public class ComponentContext {
         });
     }
 
-    private void processPreDestroy() {
-        // TODO
+    private void processPreDestroy(Map<String, Object> componentsMap) {
+        if (this.shutdownHook == null) {
+            this.shutdownHook = new Thread(() -> componentsMap.values().forEach(component -> {
+                Class<?> componentClass = component.getClass();
+                Stream.of(componentClass.getMethods())
+                        .filter(method ->
+                                !Modifier.isStatic(method.getModifiers()) &&      // 非 static
+                                        method.getParameterCount() == 0 &&        // 没有参数
+                                        method.isAnnotationPresent(PreDestroy.class) // 标注 @PostConstruct
+                        ).forEach(method -> {
+                    // 执行目标方法
+                    try {
+                        method.invoke(component);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+            }));
+            Runtime.getRuntime().addShutdownHook(this.shutdownHook);
+        }
     }
 
     /**
@@ -188,6 +232,28 @@ public class ComponentContext {
      */
     public <C> C getComponent(String name) {
         return (C) componentsMap.get(name);
+    }
+
+    /**
+     * 通过类型进行依赖查找
+     *
+     * @param type
+     * @param <C>
+     * @return
+     */
+    public <C> C getComponent(Class<C>  type) {
+        if (type == null) {
+            throw new RuntimeException("Required type must not be null");
+        }
+        String[] compenentNames = allComponentNamesByType.get(type);
+        if (compenentNames!= null && compenentNames.length > 1) {
+            throw new RuntimeException(type + "expected single matching bean but found " + compenentNames.length +  ": " + compenentNames);
+        }
+        Object conponent = componentsMap.get(compenentNames[0]);
+        if (conponent== null) {
+            throw new RuntimeException("Required type " + type + " found none single");
+        }
+        return (C) conponent;
     }
 
     /**

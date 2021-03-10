@@ -2,10 +2,16 @@ package org.geektimes.projects.user.service;
 
 import org.geektimes.projects.user.domain.User;
 import org.geektimes.projects.user.sql.LocalTransactional;
+import org.geektimes.projects.user.validator.bean.validation.group.UserGroup;
 
 import javax.annotation.Resource;
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
+import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 public class UserServiceImpl implements UserService {
 
@@ -18,10 +24,20 @@ public class UserServiceImpl implements UserService {
     @Override
     // 默认需要事务
     @LocalTransactional
-    public boolean register(User user) {
+    public List<String> register(User user) {
         // before process
-//        EntityTransaction transaction = entityManager.getTransaction();
-//        transaction.begin();
+        EntityTransaction transaction = entityManager.getTransaction();
+        transaction.begin();
+
+        // 校验
+        List<String> validateMsgList = new ArrayList<>();
+        Set<ConstraintViolation<User>> validateSet = validator.validate(user, UserGroup.Register.class);
+        if (validateSet != null && validateSet.size() > 0) {
+            validateSet.forEach(userConstraintViolation -> {
+                validateMsgList.add(userConstraintViolation.getMessage());
+            });
+        return validateMsgList;
+        }
 
         // 主调用
         entityManager.persist(user);
@@ -51,9 +67,9 @@ public class UserServiceImpl implements UserService {
         // 这种情况 update 方法同样共享了 register 方法物理事务，并且通过 Savepoint 来实现局部提交和回滚
 
         // after process
-        // transaction.commit();
+         transaction.commit();
 
-        return false;
+        return null;
     }
 
     @Override
@@ -74,6 +90,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User queryUserByNameAndPassword(String name, String password) {
+        return null;
+    }
+
+    @Override
+    public List<User> listAll() {
         return null;
     }
 }

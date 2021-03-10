@@ -18,6 +18,11 @@
     <dependencies>
         <dependency>
             <groupId>org.geekbang.projects</groupId>
+            <artifactId>context</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.geekbang.projects</groupId>
             <artifactId>my-web-mvc</artifactId>
             <version>${revision}</version>
         </dependency>
@@ -58,7 +63,7 @@
 
         <!-- Hibernate Validator -->
         <dependency>
-            <groupId>org.hibernate.validator</groupId>
+            <groupId>org.hibernate</groupId>
             <artifactId>hibernate-validator</artifactId>
         </dependency>
 

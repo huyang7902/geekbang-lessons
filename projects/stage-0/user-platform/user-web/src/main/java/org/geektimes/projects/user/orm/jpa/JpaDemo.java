@@ -1,14 +1,13 @@
 package org.geektimes.projects.user.orm.jpa;
 
-import org.apache.derby.impl.db.BasicDatabase;
 import org.apache.derby.jdbc.EmbeddedDataSource;
 import org.geektimes.projects.user.domain.User;
 
 import javax.annotation.Resource;
 import javax.persistence.*;
-import javax.persistence.spi.PersistenceProvider;
 import javax.sql.DataSource;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class JpaDemo {
@@ -38,6 +37,9 @@ public class JpaDemo {
         transaction.commit();
 
         System.out.println(entityManager.find(User.class, 1L));
+        Query query = entityManager.createNativeQuery("select * from users", User.class);
+        List list = query.getResultList();
+        list.forEach(System.out::println);
     }
 
     private static Map<String, Object> getProperties() {

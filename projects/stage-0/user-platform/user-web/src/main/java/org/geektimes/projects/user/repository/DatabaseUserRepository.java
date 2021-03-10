@@ -1,6 +1,6 @@
 package org.geektimes.projects.user.repository;
 
-import org.geektimes.function.ThrowableFunction;
+import org.geektimes.context.function.ThrowableFunction;
 import org.geektimes.context.ComponentContext;
 import org.geektimes.projects.user.domain.User;
 import org.geektimes.projects.user.sql.DBConnectionManager;
@@ -44,7 +44,16 @@ public class DatabaseUserRepository implements UserRepository {
 
     @Override
     public boolean save(User user) {
-        return false;
+        return executeUpdate("insert into users(name,password,email,phoneNumber) values(?, ?, ?, ?)",
+                integer -> integer == 1,
+                e -> {
+                    // 异常处理
+                    e.printStackTrace();
+                },
+                user.getName(),
+                user.getPassword(),
+                user.getEmail(),
+                user.getPhoneNumber());
     }
 
     @Override
@@ -125,13 +134,49 @@ public class DatabaseUserRepository implements UserRepository {
 
                 // Boolean -> boolean
                 String methodName = preparedStatementMethodMappings.get(argType);
-                Method method = PreparedStatement.class.getMethod(methodName, wrapperType);
-                method.invoke(preparedStatement, i + 1, args);
+                Method method = PreparedStatement.class.getMethod(methodName, int.class,wrapperType);
+                method.invoke(preparedStatement, i + 1, arg);
             }
             ResultSet resultSet = preparedStatement.executeQuery();
             // 返回一个 POJO List -> ResultSet -> POJO List
             // ResultSet -> T
             return function.apply(resultSet);
+        } catch (Throwable e) {
+            exceptionHandler.accept(e);
+        }
+        return null;
+    }
+
+    /**
+     * @param sql
+     * @param function
+     * @param <T>
+     * @return
+     */
+    protected <T> T executeUpdate(String sql, ThrowableFunction<Integer, T> function,
+                                 Consumer<Throwable> exceptionHandler, Object... args) {
+        Connection connection = getConnection();
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                Class argType = arg.getClass();
+
+                Class wrapperType = wrapperToPrimitive(argType);
+
+                if (wrapperType == null) {
+                    wrapperType = argType;
+                }
+
+                // Boolean -> boolean
+                String methodName = preparedStatementMethodMappings.get(argType);
+                Method method = PreparedStatement.class.getMethod(methodName, int.class,wrapperType);
+                method.invoke(preparedStatement, i + 1, arg);
+            }
+            int affectedRows = preparedStatement.executeUpdate();
+            // 返回一个 POJO List -> ResultSet -> POJO List
+            // ResultSet -> T
+            return function.apply(affectedRows);
         } catch (Throwable e) {
             exceptionHandler.accept(e);
         }

@@ -3,6 +3,7 @@ package org.geektimes.projects.user.orm.jpa;
 import org.geektimes.context.ComponentContext;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.persistence.*;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaDelete;
@@ -55,6 +56,11 @@ public class DelegatingEntityManager implements EntityManager {
         }
 
         return properties;
+    }
+
+    @PreDestroy
+    public void destory() {
+        System.out.println("DelegatingEntityManager#destory");
     }
 
     // Setter 方法会被 Tomcat JNDI 实现调用
