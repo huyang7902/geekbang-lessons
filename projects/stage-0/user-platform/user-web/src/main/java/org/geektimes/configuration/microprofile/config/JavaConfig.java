@@ -5,6 +5,7 @@ import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
 import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.eclipse.microprofile.config.spi.Converter;
+import org.geektimes.configuration.microprofile.converter.ConverterUtils;
 
 import java.util.*;
 
@@ -34,7 +35,7 @@ public class JavaConfig implements Config {
     public <T> T getValue(String propertyName, Class<T> propertyType) {
         String propertyValue = getPropertyValue(propertyName);
         // String 转换成目标类型
-        return null;
+        return ConverterUtils.convert(propertyValue, propertyType);
     }
 
     @Override
